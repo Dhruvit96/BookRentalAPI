@@ -1,13 +1,11 @@
 ﻿using BookRentalAPI.Models;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Threading.Tasks;
+using System.IO;
 
 namespace BookRentalAPI.Controllers
 {
@@ -16,9 +14,11 @@ namespace BookRentalAPI.Controllers
     public class BooksController : ControllerBase
     {
         private readonly IConfiguration _configuration;
-        public BooksController(IConfiguration configuration)
+        private readonly IWebHostEnvironment _env;
+        public BooksController(IConfiguration configuration, IWebHostEnvironment env)
         {
             _configuration = configuration;
+            _env = env;
         }
 
         [HttpGet("{userId}/{offset}")]
@@ -109,6 +109,34 @@ namespace BookRentalAPI.Controllers
                 }
             }
             return new JsonResult("Book Deleted");
+        }
+
+        [Route("UploadImage")]
+        [HttpPost]
+        public JsonResult Post()
+        {
+            try
+            {
+                var httpRequest = Request.Form;
+                var postedFile = httpRequest.Files[0];
+                string extension = Path.GetExtension(postedFile.FileName);
+                string random = Guid.NewGuid() + extension;
+                var physicalPath = _env.ContentRootPath + "/Photos/" + random;
+                while (System.IO.File.Exists(physicalPath))
+                {
+                    random = Guid.NewGuid() + extension;
+                    physicalPath = _env.ContentRootPath + "/Photos/" + random;
+                }
+                using(var stream = new FileStream(physicalPath, FileMode.Create))
+                {
+                    postedFile.CopyTo(stream);
+                }
+                return new JsonResult(random);
+            }
+            catch (Exception)
+            {
+                return new JsonResult(new { error = "Can not add image."});
+            }
         }
     }
 }
