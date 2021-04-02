@@ -11,8 +11,8 @@ namespace BookRentalAPI.Models
         public string BookName { get; set; }
         public int Condition { get; set; }
         public string CoverImageName { get; set; }
-        public double MRP { get; set; }
+        public int MRP { get; set; }
         public int OwnerId { get; set; }
-        public double PricePerWeek { get; set; }
+        public int PricePerWeek { get; set; }
     }
 }
