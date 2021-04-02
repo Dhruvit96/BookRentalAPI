@@ -18,3 +18,14 @@ F:\NET\BookRentalAPI\obj\Debug\netcoreapp3.1\BookRentalAPI.RazorTargetAssemblyIn
 F:\NET\BookRentalAPI\obj\Debug\netcoreapp3.1\BookRentalAPI.dll
 F:\NET\BookRentalAPI\obj\Debug\netcoreapp3.1\BookRentalAPI.pdb
 F:\NET\BookRentalAPI\obj\Debug\netcoreapp3.1\BookRentalAPI.genruntimeconfig.cache
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\System.Data.SqlClient.dll
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\runtimes\win-arm64\native\sni.dll
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\runtimes\win-x64\native\sni.dll
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\runtimes\win-x86\native\sni.dll
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\runtimes\unix\lib\netcoreapp2.1\System.Data.SqlClient.dll
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\runtimes\win\lib\netcoreapp2.1\System.Data.SqlClient.dll
+F:\NET\BookRentalAPI\obj\Debug\netcoreapp3.1\BookRentalAPI.csproj.CopyComplete
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\Microsoft.AspNetCore.JsonPatch.dll
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\Microsoft.AspNetCore.Mvc.NewtonsoftJson.dll
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\Newtonsoft.Json.dll
+F:\NET\BookRentalAPI\bin\Debug\netcoreapp3.1\Newtonsoft.Json.Bson.dll
