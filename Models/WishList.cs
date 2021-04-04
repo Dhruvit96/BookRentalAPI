@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 
 namespace BookRentalAPI.Models
 {
-    public class Category
+    public class WishList
     {
-        public int CategoryId { get; set; }
-        public string CategoryName { get; set; }
+        public int BookId { get; set; }
+        public int UserId { get; set; }
     }
 }

@@ -13,19 +13,18 @@ namespace BookRentalAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AddressesController : ControllerBase
+    public class RatingController : ControllerBase
     {
         private readonly IConfiguration _configuration;
-        public AddressesController(IConfiguration configuration)
+        public RatingController(IConfiguration configuration)
         {
             _configuration = configuration;
         }
 
-        [HttpGet("{userId}")]
-        public JsonResult Get(string userId)
+        [HttpGet("{bookId}")]
+        public JsonResult Get(string bookId)
         {
-            string query = @"select Address1, Address2, City, PostalCode, Selected from dbo.Addresses where UserId = "
-                    + userId + @" and Deleted = 0 ";
+            string query = @"select coalesce(convert(decimal(10,2),avg(cast(Stars as decimal))),0) as Stars from dbo.Ratings where BookId =" + bookId + @" and deleted = 0";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
@@ -40,38 +39,36 @@ namespace BookRentalAPI.Controllers
                     connection.Close();
                 }
             }
-            return new JsonResult(table);
+            return new JsonResult(new { Stars = (table.Rows[0])["Stars"] });
+        }
+
+        [HttpGet("{bookId}/{userId}")]
+        public JsonResult Get(string bookId,string userId)
+        {
+            string query = @"select coalesce(Stars,0) as Stars from dbo.Ratings where BookId =" + bookId + " and UserId =" + userId + @" and deleted = 0";
+            DataTable table = new DataTable();
+            string connectionString = _configuration.GetConnectionString("BookRentalCon");
+            SqlDataReader reader;
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    reader = command.ExecuteReader();
+                    table.Load(reader);
+                    reader.Close();
+                    connection.Close();
+                }
+            }
+            return new JsonResult(new { Stars = (table.Rows.Count == 0 ? 0 : (table.Rows[0])["Stars"]) });
         }
 
         [HttpPost]
-        public JsonResult Post(Address address)
+        public JsonResult Post(Rating rating)
         {
-            string query = @"insert into dbo.Addresses (Address1, Address2, City, Deleted, PostalCode, Selected, UserId)
-                    output INSERTED.AddressId values ('" + address.Address1 + "','" + address.Address2 + "','"
-                    + address.City + "', 0,'" + address.PostalCode + "', 0," + address.UserId + ")";
-            string connectionString = _configuration.GetConnectionString("BookRentalCon");
-            SqlDataReader reader;
-            DataTable table = new DataTable();
-            using (SqlConnection connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-                using (SqlCommand command = new SqlCommand(query, connection))
-                {
-                    reader = command.ExecuteReader();
-                    table.Load(reader);
-                    reader.Close();
-                    connection.Close();
-                }
-            }
-            return new JsonResult(new { AddressId = (table.Rows[0])["AddressId"] });
-        }
-
-        [Route("Select")]
-        [HttpPut]
-        public JsonResult Put(SelectAddressRequest request)
-        {
-            string query = @"update dbo.Addresses set Selected = case when AddressId ="
-                    + request.AddressId + @" then 1 else 0 end where UserId = " + request.UserId + @"";
+            string query = @"insert into dbo.Ratings (BookId, UserId, Deleted, Stars) values ("
+                        + rating.BookId + "," + rating.UserId + ", 0," + rating.Stars + ")";
+            Console.WriteLine(query);
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -84,15 +81,13 @@ namespace BookRentalAPI.Controllers
                     connection.Close();
                 }
             }
-            return new JsonResult("Address Selected");
+            return new JsonResult("Rating added");
         }
 
         [HttpPut]
-        public JsonResult Put(Address address)
+        public JsonResult Put(Rating rating)
         {
-            string query = @"update dbo.Addresses set Address1 ='" + address.Address1 + "', Address2 ='" + 
-                    address.Address2 + "', City ='" + address.City + "', PostalCode = '" + 
-                    address.PostalCode + "' where AddressId = " + address.AddressId + @"";
+            string query = @"update dbo.Ratings set Stars = " + rating.Stars + " where BookId =" + rating.BookId + " and UserId =" + rating.UserId + @"";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -102,16 +97,15 @@ namespace BookRentalAPI.Controllers
                 {
                     reader = command.ExecuteReader();
                     reader.Close();
-                    connection.Close();
                 }
             }
-            return new JsonResult("Address Updated");
+            return new JsonResult("Rating Updated");
         }
 
-        [HttpDelete("{id}")]
-        public JsonResult Delete(int id)
+        [HttpDelete]
+        public JsonResult Delete(Rating rating)
         {
-            string query = @"update dbo.Addresses set Deleted = 1 where AddressId =" + id + @"";
+            string query = @"set dbo.Ratings Deleted = 1 where BookId =" + rating.BookId + " and UserId =" + rating.UserId + @"";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -121,10 +115,9 @@ namespace BookRentalAPI.Controllers
                 {
                     reader = command.ExecuteReader();
                     reader.Close();
-                    connection.Close();
                 }
             }
-            return new JsonResult("Address Deleted");
+            return new JsonResult("Rating Removed");
         }
     }
 }

@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 
 namespace BookRentalAPI.Models
 {
-    public class Review
+    public class Rating
     {
-        public int ReviewId { get; set; }
+        public int RatingId { get; set; }
         public int BookId { get; set; }
-        public string Comment { get; set; }
         public int Stars { get; set; }
+        public int UserId { get; set; }
     }
 }

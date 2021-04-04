@@ -31,8 +31,9 @@ namespace BookRentalAPI.Controllers
                     + userId + @" and EndDate > '" + today + @"') then 1 else 0 end) as InCart,
                     convert(bit, case when BookId in (select BookId from dbo.WishList where UserId = "
                     + userId + @") then 1 else 0 end) as InWishList, MRP, PricePerWeek from dbo.Books where OwnerId != "
-                    + userId + @" and Deleted = 0" + ((categories.Count == 0) ? @"" :
-                    @"and BookId in (select distinct BookId from dbo.Categories where CategoryId in ({0})) ") +
+                    + userId + @" and Deleted = 0 and BookId not in (select BookId from dbo.Rental where EndDate >= '" +
+                    today + @"' and BorrowerId != " + userId + ((categories.Count == 0) ? @")" :
+                    @") and BookId in (select distinct BookId from dbo.BookCategories where CategoryId in ({0})) ") +
                     @"order by BookId desc offset " + offset + @"rows fetch next 20 rows only";
             if(categories.Count != 0)
             {
