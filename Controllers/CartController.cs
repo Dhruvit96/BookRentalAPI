@@ -13,10 +13,10 @@ namespace BookRentalAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class WishListController : ControllerBase
+    public class CartController : ControllerBase
     {
         private readonly IConfiguration _configuration;
-        public WishListController(IConfiguration configuration)
+        public CartController(IConfiguration configuration)
         {
             _configuration = configuration;
         }
@@ -25,12 +25,10 @@ namespace BookRentalAPI.Controllers
         public JsonResult Get(string userId)
         {
             string today = DateTime.Today.ToString("yyyy-MM-dd");
-            string query = @"select convert(bit, case when BookId in (select BookId from dbo.Rental where EndDate >= '" + today + @"') then 0 else 1 
-                    end) as Available, BookId, BookName, Condition, CoverImageName,convert(bit, case when BookId in 
-                    (select BookId from dbo.Rental where BorrowerId = " + userId +
-                    @" and EndDate > '" + today + @"') then 1 else 0 end) as InCart,
-                    convert(bit, 1) as InWishList, MRP, PricePerWeek from dbo.Books where BookId in (select BookId from dbo.WishList where UserId ="
-                    + userId + @") and Deleted = 0";
+            string query = @"select convert(bit, case when dbo.Cart.ExpireOn > '" + today + @"' then 0 else 1 
+                    end) as Expired, dbo.Books.BookId, dbo.Books.BookName, dbo.Books.Condition, dbo.Books.MRP, dbo.Books.PricePerWeek 
+                    from dbo.Books right join dbo.Cart on dbo.Cart.BookId = dbo.Books.BookId where dbo.Cart.UserId = " +
+                    userId + " and dbo.Books.Deleted = 0";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
@@ -49,29 +47,46 @@ namespace BookRentalAPI.Controllers
         }
 
         [HttpPost]
-        public JsonResult Post(WishList wish)
+        public JsonResult Post(Cart cart)
         {
-            string query = @"insert into dbo.WishList (BookId,UserId) values ("
-                        + wish.BookId + "," + wish.UserId + ")";
+            string expireOn = DateTime.Today.AddDays(4).ToString("yyyy-MM-dd");
+            string query = @"insert into dbo.Cart (BookId,UserId,ExpireOn) values ("
+                        + cart.BookId + "," + cart.UserId + ",'" + expireOn + "')";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 connection.Open();
-                using (SqlCommand command = new SqlCommand(query, connection))
+                try
                 {
-                    reader = command.ExecuteReader();
-                    reader.Close();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        reader = command.ExecuteReader();
+                        reader.Close();
+                    }
+                }
+                catch(SqlException)
+                {
+                    query = @"update dbo.Cart set BookId =" + cart.BookId + ",UserId = " + cart.UserId +
+                        ",ExpireOn ='" + expireOn + @"'";
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        reader = command.ExecuteReader();
+                        reader.Close();
+                    }
+                }
+                finally
+                {
                     connection.Close();
                 }
             }
-            return new JsonResult("WishList Added");
+            return new JsonResult("Book Added");
         }
 
         [HttpDelete]
-        public JsonResult Delete(WishList wish)
+        public JsonResult Delete(Cart cart)
         {
-            string query = @"delete from dbo.WishList where BookId =" + wish.BookId + " and UserId =" + wish.UserId + @"";
+            string query = @"delete from dbo.Cart where BookId =" + cart.BookId + " and UserId =" + cart.UserId + @"";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -83,8 +98,7 @@ namespace BookRentalAPI.Controllers
                     reader.Close();
                 }
             }
-            return new JsonResult("WishList Removed");
+            return new JsonResult("Book Removed");
         }
-
     }
 }

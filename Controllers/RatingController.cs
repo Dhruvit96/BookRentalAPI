@@ -68,7 +68,6 @@ namespace BookRentalAPI.Controllers
         {
             string query = @"insert into dbo.Ratings (BookId, UserId, Deleted, Stars) values ("
                         + rating.BookId + "," + rating.UserId + ", 0," + rating.Stars + ")";
-            Console.WriteLine(query);
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))

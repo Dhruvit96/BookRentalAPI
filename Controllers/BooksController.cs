@@ -27,8 +27,8 @@ namespace BookRentalAPI.Controllers
         public JsonResult Get(List<int> categories,string userId, int offset )
         {
             string today = DateTime.Today.ToString("yyyy-MM-dd");
-            string query = @"select BookId, BookName, Condition, CoverImageName,convert(bit, case when BookId in (select BookId from dbo.Rental where BorrowerId = "
-                    + userId + @" and EndDate > '" + today + @"') then 1 else 0 end) as InCart,
+            string query = @"select BookId, BookName, Condition, CoverImageName,convert(bit, case when BookId in (select BookId from dbo.Cart where UserId = "
+                    + userId + @" and ExpireOn > '" + today + @"') then 1 else 0 end) as InCart,
                     convert(bit, case when BookId in (select BookId from dbo.WishList where UserId = "
                     + userId + @") then 1 else 0 end) as InWishList, MRP, PricePerWeek from dbo.Books where OwnerId != "
                     + userId + @" and Deleted = 0 and BookId not in (select BookId from dbo.Rental where EndDate >= '" +
