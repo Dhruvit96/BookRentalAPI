@@ -22,11 +22,15 @@ namespace BookRentalAPI.Controllers
         [HttpGet]
         public JsonResult Get(User user)
         {
-            string query = @"select UserId, Email, FirstName, LastName, MobileNumber from dbo.Users where Email = '" 
-                    + user.Email + "' and Password = '" + user.Password + "' and Deleted != 1";
+            string query = @"select UserId from dbo.Users where Email = '" + user.Email + "' and Password = '"
+                + user.Password + "' and Deleted != 1";
+            string expire = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd");
+            string checkToken = @"select UserId from dbo.Users where Token = '{0}'";
+            string tokenGenration = @"Update dbo.Users set Token ='{0}', Expire ='" + expire + @"' where UserId = {1}";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
+            string token;
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 connection.Open();
@@ -35,21 +39,52 @@ namespace BookRentalAPI.Controllers
                     reader = command.ExecuteReader();
                     table.Load(reader);
                     reader.Close();
+                }
+                if (table.Rows.Count == 0)
+                {
                     connection.Close();
-                } 
+                    return new JsonResult(new { error = "Email or password is incorrect." });
+                }
+                else
+                {
+                    string userId = (table.Rows[0])["UserId"].ToString();
+                    token = Guid.NewGuid().ToString();
+                    using (SqlCommand command = new SqlCommand(string.Format(checkToken,token), connection))
+                    {
+                        reader = command.ExecuteReader();
+                        table = new DataTable();
+                        table.Load(reader);
+                        reader.Close();
+                    }
+                    while(table.Rows.Count > 0)
+                    {
+                        token = Guid.NewGuid().ToString();
+                        using (SqlCommand command = new SqlCommand(string.Format(checkToken, token), connection))
+                        {
+                            reader = command.ExecuteReader();
+                            table = new DataTable();
+                            table.Load(reader);
+                            reader.Close();
+                        }
+                    }
+                    using (SqlCommand command = new SqlCommand(string.Format(tokenGenration,token,userId), connection))
+                    {
+                        reader = command.ExecuteReader();
+                        reader.Close();
+                    }
+                }
+                connection.Close();
             }
-            if(table.Rows.Count == 0)
-            {
-                return new JsonResult(new { error = "Email or password is incorrect." });
-            }
-            return new JsonResult(table);
+            return new JsonResult(new { Token = token });
         }
 
-        [Route("{id}")]
+        [Route("{token}")]
         [HttpGet]
-        public JsonResult Get(string id)
+        public JsonResult Get(string token)
         {
-            string query = @"select UserId, Email, FirstName, LastName, MobileNumber from dbo.Users where UserId = '" + id + "' and Deleted = 0";
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string query = @"select Email, FirstName, LastName, MobileNumber from dbo.Users where Token = '" + token
+                + "'and Expire > '" + today + @"' and Deleted = 0";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
@@ -75,9 +110,9 @@ namespace BookRentalAPI.Controllers
         [HttpPost]
         public JsonResult Post(User user)
         {
-            string query = @"insert into dbo.Users (Deleted, Email, FirstName, LastName, MobileNumber, Password) 
-                        values ('False','" + user.Email + "','" + user.FirstName + "','"
-                        + user.LastName + "','" + user.MobileNumber + "','" + user.Password + "')";
+            string query = @"insert into dbo.Users (Deleted, Email, FirstName, LastName, MobileNumber, Password)" +
+                        "values ('False','" + user.Email + "','" + user.FirstName + "','" + user.LastName
+                        + "','" + user.MobileNumber + "','" + user.Password + "')";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -106,12 +141,13 @@ namespace BookRentalAPI.Controllers
         [HttpPut]
         public JsonResult Put(User user)
         {
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
             string query = @"update dbo.Users set
                     Email = '" + user.Email + @"', 
                     FirstName = '" + user.FirstName + @"', 
                     LastName = '" + user.LastName + @"', 
                     MobileNumber = '" + user.MobileNumber + @"'
-                    where UserId = " + user.UserId + @" and Deleted = 0";
+                    where Token = '" + user.Token + @"' and Deleted = 0 and Expire > '" + today + "'";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -141,13 +177,11 @@ namespace BookRentalAPI.Controllers
         [HttpPut]
         public JsonResult Put(UpdatePasswordRequest request)
         {
-            if (!CheckPassword(request.UserId, request.OldPassword))
+            if (!CheckPassword(request.Token, request.OldPassword))
             {
                 return new JsonResult(new { error = "Password is not correct." });
             }
-            string query = @"update dbo.Users set
-                    Password = '" + request.NewPassword + @"'
-                    where UserId = " + request.UserId + @"";
+            string query = @"update dbo.Users set Password = '" + request.NewPassword + @"' where Token ='" + request.Token + @"'";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -166,16 +200,17 @@ namespace BookRentalAPI.Controllers
         [HttpDelete]
         public JsonResult Delete(User user)
         {
-            if (!CheckPassword(user.UserId, user.Password))
+            if (!CheckPassword(user.Token, user.Password))
             {
                 return new JsonResult(new { error = "Password is not correct." });
             }
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
             string query1 = @"update dbo.Users set Deleted = 1
-                    where UserId = " + user.UserId + @"";
+                    where Token = '" + user.Token + @"' and Expire >'" + today + @"";
             string query2 = @"update dbo.Addresses set Deleted = 1
-                    where UserId = " + user.UserId + @"";
+                    where UserId in (select UserId from dbo.Users where Token = '" + user.Token + "' ) + @";
             string query3 = @"update dbo.Books set Deleted = 1
-                    where OwnerId = " + user.UserId + @"";
+                    where OwnerId in (select UserId from dbo.Users where Token = '" + user.Token + "' ) + @";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -201,11 +236,13 @@ namespace BookRentalAPI.Controllers
             return new JsonResult("User Deleted");
         }
 
-        private bool CheckPassword(int id,string password)
+        private bool CheckPassword(string token,string password)
         {
-            string query = @"select * from dbo.Users where
-                    Password = '" + password + @"'
-                    and UserId = " + id + @"";
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string query = @"select * from dbo.Users where" +
+                    "Password = '" + password + @"'
+                    and Token = '" + token + @"'
+                    and Expire > '" + today + @"'";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             DataTable table = new DataTable();
             SqlDataReader reader;

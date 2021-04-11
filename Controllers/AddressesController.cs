@@ -21,11 +21,12 @@ namespace BookRentalAPI.Controllers
             _configuration = configuration;
         }
 
-        [HttpGet("{userId}")]
-        public JsonResult Get(string userId)
+        [HttpGet("{token}")]
+        public JsonResult Get(string token)
         {
-            string query = @"select Address1, Address2, City, PostalCode, Selected from dbo.Addresses where UserId = "
-                    + userId + @" and Deleted = 0 ";
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string query = @"select Address1, Address2, City, PostalCode, Selected from dbo.Addresses where UserId in (select UserId from" +
+                    " dbo.users where Token = '" + token + @"' and Expire>'" + today + "') and Deleted = 0 ";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
@@ -46,21 +47,31 @@ namespace BookRentalAPI.Controllers
         [HttpPost]
         public JsonResult Post(Address address)
         {
-            string query = @"insert into dbo.Addresses (Address1, Address2, City, Deleted, PostalCode, Selected, UserId)
-                    output INSERTED.AddressId values ('" + address.Address1 + "','" + address.Address2 + "','"
-                    + address.City + "', 0,'" + address.PostalCode + "', 0," + address.UserId + ")";
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string query = @"insert into dbo.Addresses (Address1, Address2, City, Deleted, PostalCode, Selected, UserId)" +
+                    " output INSERTED.AddressId values ('" + address.Address1 + "','" + address.Address2 + "','"
+                    + address.City + "', 0,'" + address.PostalCode + "', 0,(select UserId from dbo.Users where Token ='" +
+                    address.Token + "' and Expire >'" + today + "'))";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             DataTable table = new DataTable();
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 connection.Open();
-                using (SqlCommand command = new SqlCommand(query, connection))
+                try
                 {
-                    reader = command.ExecuteReader();
-                    table.Load(reader);
-                    reader.Close();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        reader = command.ExecuteReader();
+                        table.Load(reader);
+                        reader.Close();
+                    }
+                }
+                catch
+                {
+
                     connection.Close();
+                    return new JsonResult(new { Error = "Login session expired." });
                 }
             }
             return new JsonResult(new { AddressId = (table.Rows[0])["AddressId"] });
@@ -70,8 +81,10 @@ namespace BookRentalAPI.Controllers
         [HttpPut]
         public JsonResult Put(SelectAddressRequest request)
         {
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
             string query = @"update dbo.Addresses set Selected = case when AddressId ="
-                    + request.AddressId + @" then 1 else 0 end where UserId = " + request.UserId + @"";
+                    + request.AddressId + @" then 1 else 0 end where UserId in (select UserId from" +
+                    " dbo.users where Token = '" + request.Token + @"' and Expire >'" + today + "')";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))

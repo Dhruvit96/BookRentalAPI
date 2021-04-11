@@ -7,7 +7,7 @@ namespace BookRentalAPI.Models
 {
     public class SelectAddressRequest
     {
-        public int UserId { get; set; }
+        public string Token { get; set; }
         public int AddressId { get; set; }
     }
 }

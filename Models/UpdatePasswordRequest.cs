@@ -7,7 +7,7 @@ namespace BookRentalAPI.Models
 {
     public class UpdatePasswordRequest
     {
-        public int UserId { get; set; }
+        public string Token { get; set; }
         public string OldPassword { get; set; }
         public string NewPassword { get; set; }
     }

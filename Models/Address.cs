@@ -12,7 +12,6 @@ namespace BookRentalAPI.Models
         public string Address2 { get; set; }
         public string City { get; set; }
         public string PostalCode { get; set; }
-        public int UserId { get; set; }
-        public bool Selected { get; set; }
+        public string Token { get; set; }
     }
 }

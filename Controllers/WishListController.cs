@@ -21,16 +21,16 @@ namespace BookRentalAPI.Controllers
             _configuration = configuration;
         }
 
-        [HttpGet("{userId}")]
-        public JsonResult Get(string userId)
+        [HttpGet("{token}")]
+        public JsonResult Get(string token)
         {
             string today = DateTime.Today.ToString("yyyy-MM-dd");
-            string query = @"select convert(bit, case when BookId in (select BookId from dbo.Rental where EndDate >= '" + today + @"') then 0 else 1 
-                    end) as Available, BookId, BookName, Condition, CoverImageName,convert(bit, case when BookId in 
-                    (select BookId from dbo.Rental where BorrowerId = " + userId +
-                    @" and EndDate > '" + today + @"') then 1 else 0 end) as InCart,
-                    convert(bit, 1) as InWishList, MRP, PricePerWeek from dbo.Books where BookId in (select BookId from dbo.WishList where UserId ="
-                    + userId + @") and Deleted = 0";
+            string query = @"select convert(bit, case when BookId in (select BookId from dbo.Rental where EndDate >= '" + today + @"') then 0 else 1 " +
+                "end) as Available, BookId, BookName, Condition, CoverImageName,convert(bit, case when BookId in " +
+                "(select BookId from dbo.Rental where BorrowerId in (select UserId from dbo.Users where Token ='"
+                + token + "' and Expire >'" + today + "') and EndDate > '" + today + @"') then 1 else 0 end) as InCart," +
+                "convert(bit, 1) as InWishList, MRP, PricePerWeek from dbo.Books where BookId in (select BookId from dbo.WishList where UserId in"
+                + "(select UserId from dbo.Users where Token = '" + token + "' and Expire >'" + today + "')) and Deleted = 0";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
@@ -51,8 +51,9 @@ namespace BookRentalAPI.Controllers
         [HttpPost]
         public JsonResult Post(WishList wish)
         {
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
             string query = @"insert into dbo.WishList (BookId,UserId) values ("
-                        + wish.BookId + "," + wish.UserId + ")";
+                    + wish.BookId + ",(select UserId from dbo.Users where Token = '" + wish.Token + "' and Expire >'" + today + "'))";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -71,7 +72,9 @@ namespace BookRentalAPI.Controllers
         [HttpDelete]
         public JsonResult Delete(WishList wish)
         {
-            string query = @"delete from dbo.WishList where BookId =" + wish.BookId + " and UserId =" + wish.UserId + @"";
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string query = @"delete from dbo.WishList where BookId =" + wish.BookId + " and UserId in (select UserId from dbo.Users where Token = '"
+                + wish.Token + "' and Expire >'" + today + "')";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))

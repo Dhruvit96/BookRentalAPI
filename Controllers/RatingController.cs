@@ -24,7 +24,8 @@ namespace BookRentalAPI.Controllers
         [HttpGet("{bookId}")]
         public JsonResult Get(string bookId)
         {
-            string query = @"select coalesce(convert(decimal(10,2),avg(cast(Stars as decimal))),0) as Stars from dbo.Ratings where BookId =" + bookId + @" and deleted = 0";
+            string query = @"select coalesce(convert(decimal(10,2),avg(cast(Stars as decimal))),0) as Stars "
+                    + "from dbo.Ratings where BookId =" + bookId + @" and deleted = 0";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
@@ -42,10 +43,13 @@ namespace BookRentalAPI.Controllers
             return new JsonResult(new { Stars = (table.Rows[0])["Stars"] });
         }
 
-        [HttpGet("{bookId}/{userId}")]
-        public JsonResult Get(string bookId,string userId)
+        [HttpGet("{bookId}/{token}")]
+        public JsonResult Get(string bookId,string token)
         {
-            string query = @"select coalesce(Stars,0) as Stars from dbo.Ratings where BookId =" + bookId + " and UserId =" + userId + @" and deleted = 0";
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string query = @"select coalesce(Stars,0) as Stars from dbo.Ratings where BookId ="
+                + bookId + " and UserId in (select UserId from " + "dbo.Users where Token ='"
+                + token + @"' and Expire > '" + today + "') and deleted = 0";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
@@ -66,8 +70,10 @@ namespace BookRentalAPI.Controllers
         [HttpPost]
         public JsonResult Post(Rating rating)
         {
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
             string query = @"insert into dbo.Ratings (BookId, UserId, Deleted, Stars) values ("
-                        + rating.BookId + "," + rating.UserId + ", 0," + rating.Stars + ")";
+                        + rating.BookId + ",(Select UserId from dbo.Users where Token ='" + rating.Token +
+                        "' and Expire >'" + today + "'), 0," + rating.Stars + ")";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -86,7 +92,10 @@ namespace BookRentalAPI.Controllers
         [HttpPut]
         public JsonResult Put(Rating rating)
         {
-            string query = @"update dbo.Ratings set Stars = " + rating.Stars + " where BookId =" + rating.BookId + " and UserId =" + rating.UserId + @"";
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string query = @"update dbo.Ratings set Stars = " + rating.Stars + " where BookId =" + rating.BookId +
+                " and UserId in (Select UserId " + "from dbo.Users where Token ='"
+                + rating.Token + "' and Expire >'" + today + "')";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -104,7 +113,9 @@ namespace BookRentalAPI.Controllers
         [HttpDelete]
         public JsonResult Delete(Rating rating)
         {
-            string query = @"set dbo.Ratings Deleted = 1 where BookId =" + rating.BookId + " and UserId =" + rating.UserId + @"";
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string query = @"update dbo.Ratings set Deleted = 1 where BookId =" + rating.BookId + " and UserId in (Select UserId " +
+                "from dbo.Users where Token ='" + rating.Token + "' and Expire >'" + today + "')";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
             using (SqlConnection connection = new SqlConnection(connectionString))
