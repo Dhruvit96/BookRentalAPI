@@ -27,15 +27,13 @@ namespace BookRentalAPI.Controllers
         public JsonResult Get(List<int> categories,string token, int offset )
         {
             string today = DateTime.Today.ToString("yyyy-MM-dd");
-            string query = @"select BookId, BookName, Condition, CoverImageName,convert(bit, case when BookId in (select BookId " +
-                "from dbo.Cart where UserId in (Select UserId from dbo.Users where Token  ='" + token + @"' and Expire > '" + today +
-                "') and ExpireOn > '" + today + @"') then 1 else 0 end) as InCart,convert(bit, case when BookId in (select BookId from" +
+            string query = @"select BookId, BookName, Condition, CoverImageName, convert(bit, case when BookId in (select BookId from" +
                 " dbo.WishList where UserId in(Select UserId from dbo.Users where Token  ='" + token + @"' and Expire > '" + today +
                 "')) then 1 else 0 end) as InWishList, MRP, PricePerWeek from dbo.Books where OwnerId not in (Select UserId from dbo.Users" +
                 " where Token  ='" + token + @"' and Expire > '" + today + "') and Deleted = 0 and BookId not in " +
-                "(select BookId from dbo.Rental where EndDate >= '" + today + @"' and BorrowerId not in (Select UserId from dbo.Users where Token  ='"
-                + token + @"' and Expire > '" + today + "')" + ((categories.Count == 0) ? @")" : @") and BookId in (select distinct BookId from" +
-                " dbo.BookCategories where CategoryId in ({0})) ") + @"order by BookId desc offset " + offset + @"rows fetch next 20 rows only";
+                "(select BookId from dbo.Rental where Returned = 0) and BookId not in (select BookId from dbo.Cart where ExpireOn > '" + today +
+                ((categories.Count == 0) ? @"')" : @") and BookId in (select distinct BookId from" +
+                " dbo.BookCategories where CategoryId in ({0})) ") + @" order by BookId asc offset " + offset + @" rows fetch next 18 rows only";
             if(categories.Count != 0)
             {
                 string ids = categories[0].ToString();
@@ -62,12 +60,13 @@ namespace BookRentalAPI.Controllers
             return new JsonResult(table);
         }
 
-        [HttpGet("MyBooks/{token}")]
-        public JsonResult Get(string token)
+        [HttpGet("mybooks/{token}/{offset}")]
+        public JsonResult Get(string token,string offset)
         {
             string today = DateTime.Today.ToString("yyyy-MM-dd");
             string query = @"select BookId, BookName, Condition, CoverImageName, MRP, PricePerWeek from dbo.Books where OwnerId" +
-                " in (Select UserId from dbo.Users where Token  ='" + token + @"' and Expire > '" + today + "') and Deleted = 0";
+                " in (Select UserId from dbo.Users where Token  ='" + token + @"' and Expire > '" + today + "') and Deleted = 0" +
+                 @"order by BookId asc offset " + offset + @"rows fetch next 10 rows only";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;

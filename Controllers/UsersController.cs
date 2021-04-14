@@ -56,7 +56,7 @@ namespace BookRentalAPI.Controllers
                         table.Load(reader);
                         reader.Close();
                     }
-                    while(table.Rows.Count > 0)
+                    while(table.Rows.Count != 0)
                     {
                         token = Guid.NewGuid().ToString();
                         using (SqlCommand command = new SqlCommand(string.Format(checkToken, token), connection))
@@ -240,7 +240,7 @@ namespace BookRentalAPI.Controllers
         {
             string today = DateTime.Today.ToString("yyyy-MM-dd");
             string query = @"select * from dbo.Users where" +
-                    "Password = '" + password + @"'
+                    " Password = '" + password + @"'
                     and Token = '" + token + @"'
                     and Expire > '" + today + @"'";
             string connectionString = _configuration.GetConnectionString("BookRentalCon");

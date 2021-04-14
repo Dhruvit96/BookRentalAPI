@@ -25,11 +25,12 @@ namespace BookRentalAPI.Controllers
         public JsonResult Get(string token)
         {
             string today = DateTime.Today.ToString("yyyy-MM-dd");
-            string query = @"select convert(bit, case when BookId in (select BookId from dbo.Rental where EndDate >= '" + today + @"') then 0 else 1 " +
-                "end) as Available, BookId, BookName, Condition, CoverImageName,convert(bit, case when BookId in " +
+            string query = @"select convert(bit, case when BookId in (select BookId from dbo.Rental where Returned = 0) or BookId in (select BookId from dbo.Cart where ExpireOn >= '"
+                + today + @"') then 0 else 1 end) as Available, BookId, BookName, Condition, CoverImageName,convert(bit, case when BookId in " +
                 "(select BookId from dbo.Rental where BorrowerId in (select UserId from dbo.Users where Token ='"
-                + token + "' and Expire >'" + today + "') and EndDate > '" + today + @"') then 1 else 0 end) as InCart," +
-                "convert(bit, 1) as InWishList, MRP, PricePerWeek from dbo.Books where BookId in (select BookId from dbo.WishList where UserId in"
+                + token + "' and Expire >'" + today + "') and EndDate > '" + today + @"') then 1 else 0 end) as InRental," +
+                "convert(bit, case when BookId in (select BookId from dbo.Cart where UserId in (select UserId from dbo.Users where Token ='"
+                + token + "' and Expire >'" + today + "') and ExpireOn > '" + today + @"') then 1 else 0 end) as InCart, MRP, PricePerWeek from dbo.Books where BookId in (select BookId from dbo.WishList where UserId in"
                 + "(select UserId from dbo.Users where Token = '" + token + "' and Expire >'" + today + "')) and Deleted = 0";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");

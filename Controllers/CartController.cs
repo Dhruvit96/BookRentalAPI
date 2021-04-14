@@ -69,8 +69,8 @@ namespace BookRentalAPI.Controllers
                 }
                 catch(SqlException)
                 {
-                    query = @"update dbo.Cart set BookId =" + cart.BookId + ",UserId in (select UserId from dbo.Users where Token ='"
-                        + cart.Token + "' and Expire >'" + today + "'),ExpireOn ='" + expireOn + @"'";
+                    query = @"update dbo.Cart set BookId =" + cart.BookId + ",ExpireOn ='" + expireOn + @"' where UserId in" +
+                        " (select UserId from dbo.Users where Token ='" + cart.Token + "' and Expire >'" + today + "')";
                     using (SqlCommand command = new SqlCommand(query, connection))
                     {
                         reader = command.ExecuteReader();
