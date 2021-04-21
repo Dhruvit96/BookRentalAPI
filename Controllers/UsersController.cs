@@ -19,14 +19,15 @@ namespace BookRentalAPI.Controllers
         }
 
         [Route("Login")]
-        [HttpGet]
-        public JsonResult Get(User user)
+        [HttpPost]
+        public JsonResult Login(User user)
         {
             string query = @"select UserId from dbo.Users where Email = '" + user.Email + "' and Password = '"
                 + user.Password + "' and Deleted != 1";
             string expire = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd");
             string checkToken = @"select UserId from dbo.Users where Token = '{0}'";
             string tokenGenration = @"Update dbo.Users set Token ='{0}', Expire ='" + expire + @"' where UserId = {1}";
+            string getUser = @"Select Email,FirstName,LastName,MobileNumber,Token from dbo.Users where UserId = {0}";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
             SqlDataReader reader;
@@ -72,10 +73,17 @@ namespace BookRentalAPI.Controllers
                         reader = command.ExecuteReader();
                         reader.Close();
                     }
+                    using(SqlCommand command = new SqlCommand(string.Format(getUser, userId), connection))
+                    {
+                        reader = command.ExecuteReader();
+                        table = new DataTable();
+                        table.Load(reader);
+                        reader.Close();
+                    }
                 }
                 connection.Close();
             }
-            return new JsonResult(new { Token = token });
+            return new JsonResult(table);
         }
 
         [Route("{token}")]
@@ -83,7 +91,7 @@ namespace BookRentalAPI.Controllers
         public JsonResult Get(string token)
         {
             string today = DateTime.Today.ToString("yyyy-MM-dd");
-            string query = @"select Email, FirstName, LastName, MobileNumber from dbo.Users where Token = '" + token
+            string query = @"select Email, FirstName, LastName, MobileNumber,Token from dbo.Users where Token = '" + token
                 + "'and Expire > '" + today + @"' and Deleted = 0";
             DataTable table = new DataTable();
             string connectionString = _configuration.GetConnectionString("BookRentalCon");
